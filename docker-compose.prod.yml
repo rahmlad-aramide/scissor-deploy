@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: scissor
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: scissor
+    volumes:
+      - scissor_pg_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - scissor_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  api:
+    build: ../scissor-api
+    restart: unless-stopped
+    env_file: ../scissor-api/.env
+    depends_on:
+      - postgres
+      - redis
+    command: sh -c "npx prisma migrate deploy && node dist/index.js"
+
+  worker:
+    build: ../scissor-api
+    restart: unless-stopped
+    env_file: ../scissor-api/.env
+    depends_on:
+      - postgres
+      - redis
+    command: ["node", "dist/worker.js"]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../scissor-client/dist:/srv/scissor-client:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  scissor_pg_data:
+  scissor_redis_data:
+  caddy_data:
+  caddy_config:

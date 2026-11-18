@@ -1,0 +1,14 @@
+scissor.rahmlad.com {
+	root * /srv/scissor-client
+	encode gzip
+	try_files {path} /index.html
+	file_server
+}
+
+api.scissor.rahmlad.com {
+	reverse_proxy api:4000
+}
+
+s.rahmlad.com {
+	reverse_proxy api:4000
+}
